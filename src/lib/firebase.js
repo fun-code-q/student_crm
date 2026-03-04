@@ -20,12 +20,12 @@ import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from
 // Note: Firebase client-side keys are NOT secrets — Security Rules protect data
 // ============================================
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDE8FC5DRquejdVzmcsgmmHn3PcLcg3hyY',
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'student-crm-app.firebaseapp.com',
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'student-crm-app',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'student-crm-app.firebasestorage.app',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '261394641823',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:261394641823:web:181b64d1ca737f81fe03aa',
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
