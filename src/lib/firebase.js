@@ -58,12 +58,26 @@ export const AGENTS = [
     { value: 'agent5', label: 'Agent 5' },
 ];
 
+export const PURPOSE_OPTIONS = [
+    'Masters',
+    'Bachelors',
+    'Ausbildung',
+    'FSJ',
+    'Aupair',
+    'Language Visa',
+    'Work',
+    'Thesis',
+    'Other'
+];
+
 export const defaultStudentData = {
     firstName: '',
     middleName: '',
     lastName: '',
     email: '',
     phone: '',
+    purpose: '',
+    purposeOther: '',
     // Personal Information
     dateOfBirth: '',
     nationality: '',

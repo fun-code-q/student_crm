@@ -38,6 +38,7 @@ import {
     defaultStudentData,
     STATUSES,
     AGENTS,
+    PURPOSE_OPTIONS,
     DOCUMENT_SLOTS,
 } from '../lib/firebase';
 import DocumentVault from '../components/DocumentVault';
@@ -554,6 +555,13 @@ export default function StudentProfile() {
             ${row('Assigned Agent', agentName)}
             ${row('Payment Status', student.paid ? '✅ Paid' : '❌ Unpaid')}
             ${row('Flagged', student.isFlagged ? `🚩 Yes — ${student.flagReason || 'No reason'}` : 'No')}
+        </table>
+    </div>
+    <h3 style="color:#555;font-size:14px;margin:16px 0 8px">Purpose of Application</h3>
+    <div class="card">
+        <table>
+            ${row('Purpose', student.purpose)}
+            ${student.purpose === 'Other' ? row('Purpose (Other)', student.purposeOther) : ''}
         </table>
     </div>
     <h3 style="color:#555;font-size:14px;margin:16px 0 8px">Given Email Credentials</h3>
@@ -1082,6 +1090,29 @@ function PersonalTab({ student, onChange, onBlurSave }) {
                 <Field label="Email" type="email" value={student.email} onChange={(v) => onChange('email', v)} onBlur={() => onBlurSave('email', student.email)} required />
                 <Field label="Phone" type="tel" value={student.phone} onChange={(v) => onChange('phone', v)} onBlur={() => onBlurSave('phone', student.phone)} />
                 <Field label="Date of Birth" type="date" value={student.dateOfBirth} onChange={(v) => onChange('dateOfBirth', v)} onBlur={() => onBlurSave('dateOfBirth', student.dateOfBirth)} />
+                <div className="flex flex-col gap-1.5">
+                    <label className="block text-xs font-medium text-neutral-500">Purpose</label>
+                    <select
+                        value={student.purpose || ''}
+                        onChange={(e) => onChange('purpose', e.target.value)}
+                        onBlur={() => onBlurSave('purpose', student.purpose)}
+                        className="input-field"
+                    >
+                        <option value="">Select Purpose</option>
+                        {PURPOSE_OPTIONS.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                </div>
+                {student.purpose === 'Other' && (
+                    <Field
+                        label="Specify Purpose"
+                        value={student.purposeOther}
+                        onChange={(v) => onChange('purposeOther', v)}
+                        onBlur={() => onBlurSave('purposeOther', student.purposeOther)}
+                        placeholder="Type what it is..."
+                    />
+                )}
             </div>
 
             <div className="mt-6 pt-6 border-t border-neutral-100">
