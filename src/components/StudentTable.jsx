@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, Users, Flag, ChevronDown, Trash2, DollarSign } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, Users, Flag, ChevronDown, Trash2, DollarSign, StickyNote, History } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import StatusBadge from './StatusBadge';
 import { AGENTS } from '../lib/firebase';
@@ -151,7 +151,7 @@ export default function StudentTable({ students, sortField, sortDir, onSort, onU
                                 <tr
                                     key={s.id}
                                     onClick={() => navigate(`/students/${s.id}`)}
-                                    className={`cursor-pointer transition-colors hover:bg-primary-50/40 ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/50'
+                                    className={`cursor-pointer transition-colors hover:bg-primary-50/40 group ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/50'
                                         }`}
                                     style={{ animationDelay: `${idx * 30}ms` }}
                                 >
@@ -174,12 +174,36 @@ export default function StudentTable({ students, sortField, sortDir, onSort, onU
                                         </div>
                                     </td>
                                     <td className="px-5 py-3.5">
-                                        <AgentDropdown
-                                            value={s.assignedAgent || ''}
-                                            onChange={() => { }}
-                                            studentId={s.id}
-                                            onUpdateAgent={onUpdateAgent}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <AgentDropdown
+                                                value={s.assignedAgent || ''}
+                                                onChange={() => { }}
+                                                studentId={s.id}
+                                                onUpdateAgent={onUpdateAgent}
+                                            />
+                                            <div className="flex items-center gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/students/${s.id}`, { state: { initialTab: 'notes' } });
+                                                    }}
+                                                    className="p-1.5 rounded-md text-neutral-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                                                    title="Go to Notes"
+                                                >
+                                                    <StickyNote size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/students/${s.id}`, { state: { initialTab: 'activity' } });
+                                                    }}
+                                                    className="p-1.5 rounded-md text-neutral-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                                                    title="Go to Activity History"
+                                                >
+                                                    <History size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="px-5 py-3.5 text-neutral-600">{s.targetCourse || '—'}</td>
                                     <td className="px-5 py-3.5 text-neutral-600">{s.targetUniversity || '—'}</td>

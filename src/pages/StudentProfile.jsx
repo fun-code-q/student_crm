@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
     Save,
@@ -161,7 +161,8 @@ export default function StudentProfile() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [previewDoc, setPreviewDoc] = useState(null);
-    const [activeTab, setActiveTab] = useState('personal');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState(location.state?.initialTab || 'personal');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const debounceRef = useRef(null);
 
@@ -171,6 +172,13 @@ export default function StudentProfile() {
     const [showAgentModal, setShowAgentModal] = useState(false);
     const [pendingAgent, setPendingAgent] = useState(null);
     const [activityHistory, setActivityHistory] = useState([]);
+
+    // Handle initial tab from location state if provided after load
+    useEffect(() => {
+        if (location.state?.initialTab) {
+            setActiveTab(location.state.initialTab);
+        }
+    }, [location.state?.initialTab]);
 
     // Field change handler
     function handleChange(field, value) {
@@ -731,9 +739,25 @@ export default function StudentProfile() {
             {document.getElementById('header-actions') && createPortal(
                 <>
                     {student.createdAt && (
-                        <div className="flex items-center text-xs text-neutral-500 bg-neutral-100 rounded-full px-3 py-1.5" title="Profile Created Date">
-                            <Calendar size={12} className="mr-1.5" />
-                            <span>{formatDate(student.createdAt, { dateOnly: true }) || 'Unknown'}</span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center text-xs text-neutral-500 bg-neutral-100 rounded-full px-3 py-1.5" title="Profile Created Date">
+                                <Calendar size={12} className="mr-1.5" />
+                                <span>{formatDate(student.createdAt, { dateOnly: true }) || 'Unknown'}</span>
+                            </div>
+                            <button
+                                onClick={() => setActiveTab('notes')}
+                                className={`p-1.5 rounded-full transition-colors ${activeTab === 'notes' ? 'bg-primary-100 text-primary-600' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
+                                title="Go to Notes"
+                            >
+                                <StickyNote size={14} />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('activity')}
+                                className={`p-1.5 rounded-full transition-colors ${activeTab === 'activity' ? 'bg-primary-100 text-primary-600' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
+                                title="Go to Activity"
+                            >
+                                <History size={14} />
+                            </button>
                         </div>
                     )}
 
