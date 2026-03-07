@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Filter, X, ChevronDown } from 'lucide-react';
+import { getAgents } from '../lib/firebase';
 
 // Custom dropdown component
 function CustomSelect({ value, onChange, options, placeholder, label }) {
@@ -79,13 +80,31 @@ export default function SearchBar({
     onCourseFilterChange,
     agentFilter,
     onAgentFilterChange,
-    universities,
-    courses,
-    agents,
+    purposeFilter,
+    onPurposeFilterChange,
+    universities = [],
+    courses = [],
+    agents = [],
+    purposeOptions = [],
     onClearFilters,
 }) {
     const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+    const [localAgents, setLocalAgents] = useState(agents);
     const debounceRef = useRef(null);
+
+    // Update local agents when prop changes
+    useEffect(() => {
+        setLocalAgents(agents);
+    }, [agents]);
+
+    // Listen for agent name updates
+    useEffect(() => {
+        const handleAgentNamesUpdated = () => {
+            setLocalAgents(getAgents());
+        };
+        window.addEventListener('agent-names-updated', handleAgentNamesUpdated);
+        return () => window.removeEventListener('agent-names-updated', handleAgentNamesUpdated);
+    }, []);
 
     // Debounced search handler
     const handleSearchChange = useCallback((value) => {
@@ -107,7 +126,7 @@ export default function SearchBar({
         return () => clearTimeout(debounceRef.current);
     }, []);
 
-    const hasFilters = searchTerm || statusFilter || universityFilter || courseFilter || agentFilter;
+    const hasFilters = searchTerm || statusFilter || universityFilter || courseFilter || agentFilter || purposeFilter;
 
     // Status options
     const statusOptions = [
@@ -126,13 +145,17 @@ export default function SearchBar({
     const courseOptions = courses.map(c => ({ value: c, label: c }));
 
     // Agent options
-    const agentOptions = agents.map(a => ({ value: a.value, label: a.label }));
+    const agentOptions = localAgents.map(a => ({ value: a.value, label: a.label }));
+
+    // Purpose options
+    const pOptions = purposeOptions.map(opt => ({ value: opt, label: opt }));
 
     // Get status display label
     const getStatusLabel = (val) => statusOptions.find(o => o.value === val)?.label || val;
     const getUniversityLabel = (val) => val;
     const getCourseLabel = (val) => val;
     const getAgentLabel = (val) => agentOptions.find(o => o.value === val)?.label || val;
+    const getPurposeLabel = (val) => val;
 
     return (
         <div className="card p-4 mb-6 animate-fadeIn">
@@ -196,6 +219,14 @@ export default function SearchBar({
                         label="Agent"
                     />
 
+                    <CustomSelect
+                        value={purposeFilter}
+                        onChange={onPurposeFilterChange}
+                        options={pOptions}
+                        placeholder="All Purposes"
+                        label="Purpose"
+                    />
+
                     {hasFilters && (
                         <button
                             onClick={onClearFilters}
@@ -246,6 +277,13 @@ export default function SearchBar({
                             label="Agent"
                             value={getAgentLabel(agentFilter)}
                             onRemove={() => onAgentFilterChange('')}
+                        />
+                    )}
+                    {purposeFilter && (
+                        <FilterChip
+                            label="Purpose"
+                            value={getPurposeLabel(purposeFilter)}
+                            onRemove={() => onPurposeFilterChange('')}
                         />
                     )}
                 </div>

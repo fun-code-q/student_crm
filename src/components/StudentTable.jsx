@@ -2,12 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, Users, Flag, ChevronDown, Trash2, DollarSign, StickyNote, History } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import StatusBadge from './StatusBadge';
-import { AGENTS } from '../lib/firebase';
+import { getAgents } from '../lib/firebase';
 
 // Custom dropdown for agent selection
 function AgentDropdown({ value, onChange, studentId, onUpdateAgent }) {
     const [isOpen, setIsOpen] = useState(false);
     const ref = useRef(null);
+    const [agents, setAgents] = useState(getAgents());
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -19,7 +20,16 @@ function AgentDropdown({ value, onChange, studentId, onUpdateAgent }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const selectedAgent = AGENTS.find(a => a.value === value);
+    // Listen for agent name changes
+    useEffect(() => {
+        const handleAgentNamesUpdated = () => {
+            setAgents(getAgents());
+        };
+        window.addEventListener('agent-names-updated', handleAgentNamesUpdated);
+        return () => window.removeEventListener('agent-names-updated', handleAgentNamesUpdated);
+    }, []);
+
+    const selectedAgent = agents.find(a => a.value === value);
 
     const handleToggle = (e) => {
         e.stopPropagation();
@@ -53,7 +63,7 @@ function AgentDropdown({ value, onChange, studentId, onUpdateAgent }) {
                     >
                         Unassigned
                     </button>
-                    {AGENTS.map((agent) => (
+                    {agents.map((agent) => (
                         <button
                             key={agent.value}
                             onClick={(e) => handleSelect(e, agent.value)}

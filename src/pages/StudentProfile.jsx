@@ -37,7 +37,7 @@ import {
     firebaseInitialized,
     defaultStudentData,
     STATUSES,
-    AGENTS,
+    getAgents,
     PURPOSE_OPTIONS,
     DOCUMENT_SLOTS,
 } from '../lib/firebase';
@@ -266,8 +266,8 @@ export default function StudentProfile() {
             setPendingAgent(null);
             return;
         }
-        const currentAgentObj = AGENTS.find(a => a.value === student.assignedAgent);
-        const newAgentObj = AGENTS.find(a => a.value === pendingAgent);
+        const currentAgentObj = getAgents().find(a => a.value === student.assignedAgent);
+        const newAgentObj = getAgents().find(a => a.value === pendingAgent);
         const oldAgentName = currentAgentObj ? currentAgentObj.label : 'Unassigned';
         const newAgentName = newAgentObj ? newAgentObj.label : 'Unassigned';
 
@@ -472,7 +472,7 @@ export default function StudentProfile() {
         const created = formatDate(student.createdAt, { dateOnly: true }) || 'N/A';
         const docs = student.documents || {};
         const logs = student.activityLog || [];
-        const agentObj = AGENTS.find(a => a.value === student.assignedAgent);
+        const agentObj = getAgents().find(a => a.value === student.assignedAgent);
         const agentName = agentObj ? agentObj.label : 'Unassigned';
 
         // Helper for rendering a field row
@@ -844,7 +844,7 @@ export default function StudentProfile() {
                             title="Assigned Agent"
                         >
                             <option value="">Unassigned</option>
-                            {AGENTS.map(a => (
+                            {getAgents().map(a => (
                                 <option key={a.value} value={a.value}>{a.label}</option>
                             ))}
                         </select>
@@ -1029,7 +1029,7 @@ export default function StudentProfile() {
                         }}
                         onConfirm={handleAgentConfirm}
                         title="Confirm Agent Change"
-                        message={`Are you sure you want to change the assigned agent from "${AGENTS.find(a => a.value === student?.assignedAgent)?.label || 'Unassigned'}" to "${AGENTS.find(a => a.value === pendingAgent)?.label || 'Unassigned'}"?`}
+                        message={`Are you sure you want to change the assigned agent from "${getAgents().find(a => a.value === student?.assignedAgent)?.label || 'Unassigned'}" to "${getAgents().find(a => a.value === pendingAgent)?.label || 'Unassigned'}"?`}
                         confirmText="Save"
                         cancelText="Cancel"
                         type="info"
@@ -1133,6 +1133,71 @@ function PersonalTab({ student, onChange, onBlurSave }) {
 function AcademicTab({ student, onChange, onBlurSave }) {
     const germanLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Native'];
 
+    // Initialize arrays if undefined
+    const undergradDegrees = student.undergradDegrees || [];
+    const postgradDegrees = student.postgradDegrees || [];
+    const customAcademicSections = student.customAcademicSections || [];
+
+    // Handler for adding a new undergraduate degree
+    const addUndergradDegree = () => {
+        const newDegrees = [...undergradDegrees, { degree: '', institution: '', year: '' }];
+        onChange('undergradDegrees', newDegrees);
+    };
+
+    // Handler for updating an undergraduate degree
+    const updateUndergradDegree = (index, field, value) => {
+        const newDegrees = undergradDegrees.map((d, i) =>
+            i === index ? { ...d, [field]: value } : d
+        );
+        onChange('undergradDegrees', newDegrees);
+    };
+
+    // Handler for removing an undergraduate degree
+    const removeUndergradDegree = (index) => {
+        const newDegrees = undergradDegrees.filter((_, i) => i !== index);
+        onChange('undergradDegrees', newDegrees);
+    };
+
+    // Handler for adding a new postgraduate degree
+    const addPostgradDegree = () => {
+        const newDegrees = [...postgradDegrees, { degree: '', institution: '', year: '' }];
+        onChange('postgradDegrees', newDegrees);
+    };
+
+    // Handler for updating a postgraduate degree
+    const updatePostgradDegree = (index, field, value) => {
+        const newDegrees = postgradDegrees.map((d, i) =>
+            i === index ? { ...d, [field]: value } : d
+        );
+        onChange('postgradDegrees', newDegrees);
+    };
+
+    // Handler for removing a postgraduate degree
+    const removePostgradDegree = (index) => {
+        const newDegrees = postgradDegrees.filter((_, i) => i !== index);
+        onChange('postgradDegrees', newDegrees);
+    };
+
+    // Handler for adding a custom academic section
+    const addCustomSection = () => {
+        const newSections = [...customAcademicSections, { id: Date.now(), title: '', details: '' }];
+        onChange('customAcademicSections', newSections);
+    };
+
+    // Handler for updating a custom academic section
+    const updateCustomSection = (index, field, value) => {
+        const newSections = customAcademicSections.map((s, i) =>
+            i === index ? { ...s, [field]: value } : s
+        );
+        onChange('customAcademicSections', newSections);
+    };
+
+    // Handler for removing a custom academic section
+    const removeCustomSection = (index) => {
+        const newSections = customAcademicSections.filter((_, i) => i !== index);
+        onChange('customAcademicSections', newSections);
+    };
+
     return (
         <section className="card p-6 animate-fadeIn">
             {/* Language Scores - All in one row */}
@@ -1163,13 +1228,58 @@ function AcademicTab({ student, onChange, onBlurSave }) {
                 <h4 className="text-md font-semibold text-neutral-700 mb-4 flex items-center gap-2">
                     <GraduationCap size={18} className="text-primary-600" />
                     Undergraduate
+                    <button
+                        type="button"
+                        onClick={addUndergradDegree}
+                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors"
+                        title="Add undergraduate degree"
+                    >
+                        <Plus size={14} />
+                    </button>
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Primary Undergraduate Fields */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <Field label="Course" value={student.undergradCourse} onChange={(v) => onChange('undergradCourse', v)} onBlur={() => onBlurSave('undergradCourse', student.undergradCourse)} placeholder="e.g., B.Tech Computer Science" />
                     <Field label="Year of Completion" value={student.undergradYear} onChange={(v) => onChange('undergradYear', v)} onBlur={() => onBlurSave('undergradYear', student.undergradYear)} placeholder="e.g., 2024" />
                     <Field label="CGPA" value={student.undergradCgpa} onChange={(v) => onChange('undergradCgpa', v)} onBlur={() => onBlurSave('undergradCgpa', student.undergradCgpa)} placeholder="e.g., 8.5" />
                     <Field label="University" value={student.undergradUniversity} onChange={(v) => onChange('undergradUniversity', v)} onBlur={() => onBlurSave('undergradUniversity', student.undergradUniversity)} placeholder="e.g., University of Delhi" />
                 </div>
+                {/* Additional Undergraduate Degrees */}
+                {undergradDegrees.map((ug, index) => (
+                    <div key={index} className="mt-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-medium text-neutral-600">Additional Undergraduate Degree #{index + 1}</span>
+                            <button
+                                type="button"
+                                onClick={() => removeUndergradDegree(index)}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                                title="Remove degree"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Field
+                                label="Degree"
+                                value={ug.degree}
+                                onChange={(v) => updateUndergradDegree(index, 'degree', v)}
+                                placeholder="e.g., B.Sc. Physics"
+                            />
+                            <Field
+                                label="Institution"
+                                value={ug.institution}
+                                onChange={(v) => updateUndergradDegree(index, 'institution', v)}
+                                placeholder="e.g., University of Mumbai"
+                            />
+                            <Field
+                                label="Year"
+                                value={ug.year}
+                                onChange={(v) => updateUndergradDegree(index, 'year', v)}
+                                placeholder="e.g., 2022"
+                            />
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Postgraduate Section */}
@@ -1177,13 +1287,112 @@ function AcademicTab({ student, onChange, onBlurSave }) {
                 <h4 className="text-md font-semibold text-neutral-700 mb-4 flex items-center gap-2">
                     <GraduationCap size={18} className="text-primary-600" />
                     Previous Masters (if any)
+                    <button
+                        type="button"
+                        onClick={addPostgradDegree}
+                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors"
+                        title="Add master's degree"
+                    >
+                        <Plus size={14} />
+                    </button>
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Primary Postgraduate Fields */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <Field label="Course" value={student.postgradCourse} onChange={(v) => onChange('postgradCourse', v)} onBlur={() => onBlurSave('postgradCourse', student.postgradCourse)} placeholder="e.g., M.Sc. Data Science" />
                     <Field label="Year of Completion" value={student.postgradYear} onChange={(v) => onChange('postgradYear', v)} onBlur={() => onBlurSave('postgradYear', student.postgradYear)} placeholder="e.g., 2026" />
                     <Field label="CGPA" value={student.postgradCgpa} onChange={(v) => onChange('postgradCgpa', v)} onBlur={() => onBlurSave('postgradCgpa', student.postgradCgpa)} placeholder="e.g., 8.0" />
                     <Field label="University" value={student.postgradUniversity} onChange={(v) => onChange('postgradUniversity', v)} onBlur={() => onBlurSave('postgradUniversity', student.postgradUniversity)} placeholder="e.g., TU Munich" />
                 </div>
+                {/* Additional Postgraduate Degrees */}
+                {postgradDegrees.map((pg, index) => (
+                    <div key={index} className="mt-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-medium text-neutral-600">Additional Master's Degree #{index + 1}</span>
+                            <button
+                                type="button"
+                                onClick={() => removePostgradDegree(index)}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                                title="Remove degree"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Field
+                                label="Degree"
+                                value={pg.degree}
+                                onChange={(v) => updatePostgradDegree(index, 'degree', v)}
+                                placeholder="e.g., M.Tech Computer Science"
+                            />
+                            <Field
+                                label="Institution"
+                                value={pg.institution}
+                                onChange={(v) => updatePostgradDegree(index, 'institution', v)}
+                                placeholder="e.g., IIT Delhi"
+                            />
+                            <Field
+                                label="Year"
+                                value={pg.year}
+                                onChange={(v) => updatePostgradDegree(index, 'year', v)}
+                                placeholder="e.g., 2024"
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Custom Academic Sections */}
+            <div className="mt-6 pt-6 border-t border-neutral-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-md font-semibold text-neutral-700 flex items-center gap-2">
+                        <GraduationCap size={18} className="text-primary-600" />
+                        Additional Academic Information
+                    </h4>
+                    <button
+                        type="button"
+                        onClick={addCustomSection}
+                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors"
+                        title="Add section"
+                    >
+                        <Plus size={14} />
+                    </button>
+                </div>
+                {customAcademicSections.map((section, index) => (
+                    <div key={section.id} className="mt-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="flex justify-between items-center mb-3 gap-2">
+                            <input
+                                type="text"
+                                value={section.title}
+                                onChange={(e) => updateCustomSection(index, 'title', e.target.value)}
+                                placeholder="Section Title (e.g., PhD, Certificate Course)"
+                                className="input-field flex-1"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => removeCustomSection(index)}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-danger/10 text-danger hover:bg-danger/20 transition-colors ml-2"
+                                title="Remove section"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-neutral-500 mb-1.5">
+                                Details
+                            </label>
+                            <textarea
+                                value={section.details}
+                                onChange={(e) => updateCustomSection(index, 'details', e.target.value)}
+                                placeholder="Enter additional details..."
+                                rows={3}
+                                className="input-field resize-y"
+                            />
+                        </div>
+                    </div>
+                ))}
+                {customAcademicSections.length === 0 && (
+                    <p className="text-sm text-neutral-400 italic">Click the + button to add custom academic information</p>
+                )}
             </div>
 
             {/* Language Section - moved to row above with IELTS/TOEFL */}
@@ -1375,7 +1584,7 @@ function ActivityTab({ student, activityHistory, onAgentChangeRequest, onChange,
                             className="ml-2 bg-transparent border-b border-neutral-300 text-neutral-800 text-sm font-medium focus:outline-none focus:border-primary-500 pb-0.5 cursor-pointer"
                         >
                             <option value="">Unassigned</option>
-                            {AGENTS.map(a => (
+                            {getAgents().map(a => (
                                 <option key={a.value} value={a.value}>{a.label}</option>
                             ))}
                         </select>

@@ -50,13 +50,81 @@ export { firebaseInitialized, auth, signInWithEmailAndPassword, signOut, onAuthS
 // ============================================
 export const STATUSES = ['Draft', 'Submitted', 'Flagged', 'Document', 'Admitted', 'Rejected'];
 
-export const AGENTS = [
-    { value: 'agent1', label: 'Agent 1' },
-    { value: 'agent2', label: 'Agent 2' },
-    { value: 'agent3', label: 'Agent 3' },
-    { value: 'agent4', label: 'Agent 4' },
-    { value: 'agent5', label: 'Agent 5' },
-];
+// ============================================
+// Default Agents Configuration
+// ============================================
+const DEFAULT_AGENT_COUNT = 5;
+const AGENT_COUNT_KEY = 'agent_count';
+
+/** Get the number of agents (stored in localStorage) */
+export function getAgentCount() {
+    try {
+        const stored = localStorage.getItem(AGENT_COUNT_KEY);
+        return stored ? parseInt(stored, 10) : DEFAULT_AGENT_COUNT;
+    } catch {
+        return DEFAULT_AGENT_COUNT;
+    }
+}
+
+/** Save the number of agents to localStorage */
+export function saveAgentCount(count) {
+    try {
+        localStorage.setItem(AGENT_COUNT_KEY, count.toString());
+    } catch (error) {
+        console.error('Failed to save agent count:', error);
+    }
+}
+
+/** Get all agent values based on current count */
+export function getAllAgentValues() {
+    const count = getAgentCount();
+    const values = [];
+    for (let i = 1; i <= count; i++) {
+        values.push({ value: `agent${i}`, label: `Agent ${i}` });
+    }
+    return values;
+}
+
+export const AGENTS = getAllAgentValues();
+
+// ============================================
+// Custom Agent Names (localStorage)
+// ============================================
+const CUSTOM_AGENTS_KEY = 'custom_agent_names';
+
+/** Get default agents */
+export function getDefaultAgents() {
+    return getAllAgentValues();
+}
+
+/** Get custom agent names from localStorage */
+export function getCustomAgentNames() {
+    try {
+        const stored = localStorage.getItem(CUSTOM_AGENTS_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+}
+
+/** Save custom agent names to localStorage */
+export function saveCustomAgentNames(names) {
+    try {
+        localStorage.setItem(CUSTOM_AGENTS_KEY, JSON.stringify(names));
+    } catch (error) {
+        console.error('Failed to save custom agent names:', error);
+    }
+}
+
+/** Get agents with custom names applied */
+export function getAgents() {
+    const customNames = getCustomAgentNames();
+    const agentValues = getAllAgentValues();
+    return agentValues.map(agent => ({
+        ...agent,
+        label: customNames[agent.value] || agent.label
+    }));
+}
 
 export const PURPOSE_OPTIONS = [
     'Masters',
@@ -92,11 +160,15 @@ export const defaultStudentData = {
     // Undergraduate Section
     undergradCourse: '',
     undergradCgpa: '',
+    undergradDegrees: [], // Array of { degree, institution, year }
     // Postgraduate Section
     postgradCourse: '',
     postgradYear: '',
     postgradCgpa: '',
     postgradUniversity: '',
+    postgradDegrees: [], // Array of { degree, institution, year }
+    // Custom Academic Sections
+    customAcademicSections: [], // Array of { id, title, details }
     // Language Section
     germanLevel: '',
     // Application Tracking

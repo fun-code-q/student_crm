@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, CheckCircle, Clock, XCircle, Flag, Folder, LogOut } from 'lucide-react';
+import { Plus, Users, CheckCircle, Clock, XCircle, Flag, Folder, LogOut, Settings } from 'lucide-react';
 import {
     firebaseInitialized,
     getStudents,
@@ -9,11 +9,14 @@ import {
     updateStudent,
     deleteStudent,
     defaultStudentData,
-    AGENTS
+    STATUSES,
+    getAgents,
+    PURPOSE_OPTIONS
 } from '../lib/firebase';
 import StudentTable from '../components/StudentTable';
 import SearchBar from '../components/SearchBar';
 import ConfirmModal from '../components/ConfirmModal';
+import AgentSettingsModal from '../components/AgentSettingsModal';
 import { useAuth } from '../context/AuthContext';
 
 // Demo data used when Firebase is not configured
@@ -96,6 +99,7 @@ export default function Dashboard() {
     const [studentToDelete, setStudentToDelete] = useState(null);
     const [agentModalOpen, setAgentModalOpen] = useState(false);
     const [pendingAgentUpdate, setPendingAgentUpdate] = useState(null);
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
     useEffect(() => {
         setHeaderNode(document.getElementById('header-actions'));
@@ -116,6 +120,7 @@ export default function Dashboard() {
     const [universityFilter, setUniversityFilter] = useState('');
     const [courseFilter, setCourseFilter] = useState('');
     const [agentFilter, setAgentFilter] = useState('');
+    const [purposeFilter, setPurposeFilter] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const debounceTimerRef = useRef(null);
 
@@ -162,8 +167,6 @@ export default function Dashboard() {
         [students]
     );
 
-    // Agent filter
-    const agents = useMemo(() => AGENTS, []);
 
     // Filter + Search
     const filtered = useMemo(() => {
@@ -184,9 +187,10 @@ export default function Dashboard() {
         if (universityFilter) result = result.filter((s) => s.targetUniversity === universityFilter);
         if (courseFilter) result = result.filter((s) => s.targetCourse === courseFilter);
         if (agentFilter) result = result.filter((s) => s.assignedAgent === agentFilter);
+        if (purposeFilter) result = result.filter((s) => s.purpose === purposeFilter);
 
         return result;
-    }, [students, debouncedSearchTerm, statusFilter, universityFilter, courseFilter, agentFilter]);
+    }, [students, debouncedSearchTerm, statusFilter, universityFilter, courseFilter, agentFilter, purposeFilter]);
 
     // Sort
     const sorted = useMemo(() => {
@@ -319,54 +323,63 @@ export default function Dashboard() {
         );
     }
 
+    // Prepare filter options (Already defined above using useMemo)
+
     return (
         <div className="max-w-7xl mx-auto">
             {/* Header controls portaled into Layout.jsx top bar */}
             {headerNode && createPortal(
                 <>
                     {/* Stats */}
-                    <div className="flex items-center gap-2 flex-wrap shrink-0 mr-auto">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary-50 text-primary-700 text-xs font-semibold whitespace-nowrap">
+                    <div className="flex items-center gap-2 flex-wrap shrink-0 mr-auto text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 whitespace-nowrap">
                             <Users size={12} /> {stats.total} Total
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-neutral-100 text-neutral-600 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 whitespace-nowrap">
                             <Clock size={12} /> {stats.draft} Draft
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-100 text-amber-700 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 whitespace-nowrap">
                             <Folder size={12} /> {stats.document} Document
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-50 text-blue-700 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
                             <CheckCircle size={12} /> {stats.submitted} Submitted
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-green-50 text-green-700 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 whitespace-nowrap">
                             <CheckCircle size={12} /> {stats.admitted} Admitted
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-50 text-red-700 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 whitespace-nowrap">
                             <XCircle size={12} /> {stats.rejected} Rejected
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 whitespace-nowrap">
                             <Flag size={12} /> {stats.flagged} Flagged
                         </span>
                     </div>
 
-                    {/* Add Button */}
-                    <button onClick={handleAddStudent} className="btn-primary py-2 px-4 text-sm h-9 shrink-0">
-                        <Plus size={16} /> Add Student
-                    </button>
-
-                    {/* Logout Button */}
-                    <button
-                        onClick={handleLogout}
-                        className="btn-secondary py-2 px-4 text-sm h-9 shrink-0 flex items-center gap-2 text-red-600 hover:bg-red-50 hover:border-red-200"
-                        title="Sign Out"
-                    >
-                        <LogOut size={16} /> Logout
-                    </button>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                        <button onClick={handleAddStudent} className="btn-primary h-9 whitespace-nowrap">
+                            <Plus size={16} /> Add Student
+                        </button>
+                        <button
+                            onClick={() => setSettingsModalOpen(true)}
+                            className="btn-secondary h-9"
+                            title="Agent Settings"
+                        >
+                            <Settings size={16} /> Settings
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="btn-secondary h-9 text-red-600 hover:bg-red-50 hover:border-red-200"
+                            title="Sign Out"
+                        >
+                            <LogOut size={16} /> Logout
+                        </button>
+                    </div>
                 </>,
                 headerNode
             )}
 
-            {/* Search & Filters - Rendered in main content area */}
+            {/* Search & Filters */}
             <SearchBar
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -378,15 +391,19 @@ export default function Dashboard() {
                 onCourseFilterChange={setCourseFilter}
                 agentFilter={agentFilter}
                 onAgentFilterChange={setAgentFilter}
+                purposeFilter={purposeFilter}
+                onPurposeFilterChange={setPurposeFilter}
                 universities={universities}
                 courses={courses}
-                agents={agents}
+                agents={getAgents()}
+                purposeOptions={PURPOSE_OPTIONS}
                 onClearFilters={() => {
                     setSearchTerm('');
                     setStatusFilter('');
                     setUniversityFilter('');
                     setCourseFilter('');
                     setAgentFilter('');
+                    setPurposeFilter('');
                 }}
             />
 
@@ -406,7 +423,7 @@ export default function Dashboard() {
                 Showing {sorted.length} of {students.length} students
             </p>
 
-            {/* Delete Confirmation Modal */}
+            {/* Modals */}
             <ConfirmModal
                 isOpen={deleteModalOpen}
                 onClose={() => { setDeleteModalOpen(false); setStudentToDelete(null); }}
@@ -418,7 +435,6 @@ export default function Dashboard() {
                 type="danger"
             />
 
-            {/* Agent Change Confirmation Modal */}
             <ConfirmModal
                 isOpen={agentModalOpen}
                 onClose={() => { setAgentModalOpen(false); setPendingAgentUpdate(null); }}
@@ -428,6 +444,11 @@ export default function Dashboard() {
                 confirmText="Yes, Change Agent"
                 cancelText="Cancel"
                 type="info"
+            />
+
+            <AgentSettingsModal
+                isOpen={settingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
             />
         </div>
     );
