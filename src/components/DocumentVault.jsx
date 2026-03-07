@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { Upload, FileText, Eye, Trash2, Link2, X, Check } from 'lucide-react';
+import { Upload, FileText, Eye, Trash2, Link2, X, Check, Plus } from 'lucide-react';
 import { DOCUMENT_SLOTS, updateStudent } from '../lib/firebase';
 import ConfirmModal from './ConfirmModal';
 
-export default function DocumentVault({ studentId, studentData = {}, documents = {}, onUpdate, activityLog = [], onActivityUpdate }) {
+export default function DocumentVault({
+    studentId,
+    studentData = {},
+    documents = {},
+    customSlots = [],
+    onUpdate,
+    onCustomSlotsUpdate,
+    activityLog = [],
+    onActivityUpdate
+}) {
     const [saving, setSaving] = useState({});
     const [linkInputs, setLinkInputs] = useState({});
     const [linkValues, setLinkValues] = useState({});
     const [deleteSlot, setDeleteSlot] = useState(null); // Track which slot is pending deletion
+    const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [newCustomLabel, setNewCustomLabel] = useState('');
 
     function openLinkInput(slot) {
         setLinkInputs(prev => ({ ...prev, [slot]: true }));
@@ -30,7 +41,7 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
             return;
         }
 
-        const slotLabel = DOCUMENT_SLOTS.find(s => s.key === slot)?.label || slot;
+        const slotLabel = [...DOCUMENT_SLOTS, ...customSlots].find(s => s.key === slot)?.label || slot;
 
         setSaving(prev => ({ ...prev, [slot]: true }));
         try {
@@ -64,23 +75,54 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
         }
     }
 
+    async function handleAddCustomSlot() {
+        if (!newCustomLabel.trim()) return;
+
+        const key = `custom_${Date.now()}`;
+        const newSlot = { key, label: newCustomLabel.trim() };
+        const updatedCustomSlots = [...customSlots, newSlot];
+
+        try {
+            await updateStudent(studentId, { customDocumentSlots: updatedCustomSlots });
+            if (onCustomSlotsUpdate) onCustomSlotsUpdate(updatedCustomSlots);
+            setIsAddingCustom(false);
+            setNewCustomLabel('');
+        } catch (err) {
+            console.error('Failed to add custom slot:', err);
+            alert('Failed to add custom slot');
+        }
+    }
+
     async function handleDeleteConfirmed() {
         if (!deleteSlot) return;
-        const slotLabel = DOCUMENT_SLOTS.find(s => s.key === deleteSlot)?.label || deleteSlot;
+        const allSlots = [...DOCUMENT_SLOTS, ...customSlots];
+        const slotConfig = allSlots.find(s => s.key === deleteSlot);
+        const isCustom = deleteSlot.startsWith('custom_');
+
         try {
             const updatedDocs = { ...documents };
             delete updatedDocs[deleteSlot];
 
+            const updates = { documents: updatedDocs };
+
             // Create activity log entry
             const logEntry = {
-                action: 'document_removed',
-                label: slotLabel,
+                action: isCustom ? 'custom_document_removed' : 'document_removed',
+                label: slotConfig?.label || deleteSlot,
                 timestamp: new Date().toISOString(),
             };
             const currentLog = activityLog || [];
             const updatedLog = [...currentLog, logEntry];
+            updates.activityLog = updatedLog;
 
-            await updateStudent(studentId, { documents: updatedDocs, activityLog: updatedLog });
+            // Also remove from customSlots if it's a custom one
+            if (isCustom) {
+                const updatedCustomSlots = customSlots.filter(s => s.key !== deleteSlot);
+                updates.customDocumentSlots = updatedCustomSlots;
+                if (onCustomSlotsUpdate) onCustomSlotsUpdate(updatedCustomSlots);
+            }
+
+            await updateStudent(studentId, updates);
             onUpdate(updatedDocs);
             if (onActivityUpdate) onActivityUpdate(updatedLog);
         } catch (err) {
@@ -91,21 +133,24 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
         }
     }
 
+    const allSlots = [...DOCUMENT_SLOTS, ...customSlots];
+
     return (
         <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {DOCUMENT_SLOTS.map(({ key, label }) => {
+                {allSlots.map(({ key, label }) => {
                     const doc = documents[key];
                     const isLinkOpen = linkInputs[key];
                     const isSaving = saving[key];
+                    const isCustom = key.startsWith('custom_');
 
                     return (
                         <div
                             key={key}
-                            className="card p-3 flex flex-col gap-2 card-hover h-[140px] overflow-hidden"
+                            className={`card p-3 flex flex-col gap-2 card-hover h-[140px] overflow-hidden ${isCustom ? 'border-primary-100 bg-primary-50/10' : ''}`}
                         >
                             <div className="flex items-center justify-between gap-1">
-                                <h4 className="text-[11px] font-semibold text-neutral-700 leading-tight">{label}</h4>
+                                <h4 className="text-[11px] font-semibold text-neutral-700 leading-tight truncate" title={label}>{label}</h4>
                                 <FileText size={14} className={`shrink-0 ${doc ? "text-primary-600" : "text-neutral-300"}`} />
                             </div>
 
@@ -120,7 +165,7 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
                                             href={doc.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="btn-secondary text-[10px] py-0.5 px-2 flex items-center justify-center gap-1 rounded"
+                                            className="btn-secondary text-[10px] py-0.5 px-2 flex-items-center justify-center gap-1 rounded"
                                         >
                                             <Eye size={10} />
                                             View
@@ -167,7 +212,7 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex-1 flex items-center justify-center">
+                                <div className="flex-1 flex items-center justify-center relative">
                                     <button
                                         onClick={() => openLinkInput(key)}
                                         className="w-full h-full border-2 border-dashed border-neutral-200 rounded-lg
@@ -177,11 +222,66 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
                                         <Link2 size={16} />
                                         <span className="text-[10px] font-medium">Add Link</span>
                                     </button>
+                                    {isCustom && (
+                                        <button
+                                            onClick={() => setDeleteSlot(key)}
+                                            className="absolute top-0 right-0 p-1 text-neutral-300 hover:text-red-500 transition-colors"
+                                            title="Delete Slot"
+                                        >
+                                            <Trash2 size={10} />
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
                     );
                 })}
+
+                {/* Add Custom Slot Button/Input */}
+                <div className="card p-3 flex flex-col gap-2 card-hover h-[140px] border-dashed border-2 border-neutral-200 bg-neutral-50/30">
+                    {isAddingCustom ? (
+                        <div className="flex-1 flex flex-col justify-between gap-1">
+                            <div>
+                                <h4 className="text-[11px] font-semibold text-neutral-700 mb-1">Custom Doc Title</h4>
+                                <input
+                                    type="text"
+                                    value={newCustomLabel}
+                                    onChange={(e) => setNewCustomLabel(e.target.value)}
+                                    placeholder="e.g. Internship"
+                                    className="input-field text-[10px] py-1 px-2 w-full"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleAddCustomSlot();
+                                        if (e.key === 'Escape') setIsAddingCustom(false);
+                                    }}
+                                />
+                            </div>
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={handleAddCustomSlot}
+                                    className="btn-primary text-[10px] py-0.5 px-2 flex-1 flex items-center justify-center gap-1 rounded"
+                                >
+                                    <Check size={10} />
+                                    Create
+                                </button>
+                                <button
+                                    onClick={() => setIsAddingCustom(false)}
+                                    className="text-[10px] py-0.5 px-1.5 rounded bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                                >
+                                    <X size={10} />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setIsAddingCustom(true)}
+                            className="w-full h-full flex flex-col items-center justify-center gap-2 text-neutral-400 hover:text-primary-600 transition-colors"
+                        >
+                            <Plus size={24} className="p-1 rounded-full bg-neutral-100" />
+                            <span className="text-[11px] font-semibold uppercase tracking-wider">Add Document</span>
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Delete Confirmation Modal */}
@@ -191,8 +291,8 @@ export default function DocumentVault({ studentId, studentData = {}, documents =
                         isOpen={!!deleteSlot}
                         onClose={() => setDeleteSlot(null)}
                         onConfirm={handleDeleteConfirmed}
-                        title="Remove Document Link"
-                        message={`Are you sure you want to remove the link for "${DOCUMENT_SLOTS.find(s => s.key === deleteSlot)?.label}"? This action cannot be undone.`}
+                        title="Remove Document"
+                        message={`Are you sure you want to remove "${[...DOCUMENT_SLOTS, ...customSlots].find(s => s.key === deleteSlot)?.label}"? This action cannot be undone.`}
                         confirmText="Remove"
                         cancelText="Cancel"
                         type="danger"

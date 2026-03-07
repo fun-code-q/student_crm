@@ -1456,8 +1456,10 @@ function DocumentsTab({ student, setStudent }) {
                 studentId={student.id}
                 studentData={{ firstName: student.firstName, lastName: student.lastName }}
                 documents={student.documents || {}}
+                customSlots={student.customDocumentSlots || []}
                 activityLog={student.activityLog || []}
                 onUpdate={(docs) => setStudent((prev) => ({ ...prev, documents: docs }))}
+                onCustomSlotsUpdate={(slots) => setStudent((prev) => ({ ...prev, customDocumentSlots: slots }))}
                 onActivityUpdate={(log) => setStudent((prev) => ({ ...prev, activityLog: log }))}
             />
         </section>

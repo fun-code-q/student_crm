@@ -197,6 +197,7 @@ export const defaultStudentData = {
     paid: false,
     // Documents & Custom
     documents: {},
+    customDocumentSlots: [], // Array of { key: string, label: string }
     customFields: [],
     createdAt: null,
     updatedAt: null,
