@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, FileText, Eye, Trash2, Link2, X, Check, Plus } from 'lucide-react';
+import { Upload, FileText, Eye, Trash2, Link2, X, Check, Plus, Pencil } from 'lucide-react';
 import { DOCUMENT_SLOTS, updateStudent } from '../lib/firebase';
 import ConfirmModal from './ConfirmModal';
 
@@ -19,6 +19,8 @@ export default function DocumentVault({
     const [deleteSlot, setDeleteSlot] = useState(null); // Track which slot is pending deletion
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [newCustomLabel, setNewCustomLabel] = useState('');
+    const [editingSlot, setEditingSlot] = useState(null);
+    const [editLabelValue, setEditLabelValue] = useState('');
 
     function openLinkInput(slot) {
         setLinkInputs(prev => ({ ...prev, [slot]: true }));
@@ -93,6 +95,24 @@ export default function DocumentVault({
         }
     }
 
+    async function handleUpdateCustomLabel(key) {
+        if (!editLabelValue.trim()) return;
+
+        const updatedCustomSlots = customSlots.map(s =>
+            s.key === key ? { ...s, label: editLabelValue.trim() } : s
+        );
+
+        try {
+            await updateStudent(studentId, { customDocumentSlots: updatedCustomSlots });
+            if (onCustomSlotsUpdate) onCustomSlotsUpdate(updatedCustomSlots);
+            setEditingSlot(null);
+            setEditLabelValue('');
+        } catch (err) {
+            console.error('Failed to update custom label:', err);
+            alert('Failed to update title');
+        }
+    }
+
     async function handleDeleteConfirmed() {
         if (!deleteSlot) return;
         const allSlots = [...DOCUMENT_SLOTS, ...customSlots];
@@ -143,14 +163,47 @@ export default function DocumentVault({
                     const isLinkOpen = linkInputs[key];
                     const isSaving = saving[key];
                     const isCustom = key.startsWith('custom_');
+                    const isEditingLabel = editingSlot === key;
 
                     return (
                         <div
                             key={key}
                             className={`card p-3 flex flex-col gap-2 card-hover h-[140px] overflow-hidden ${isCustom ? 'border-primary-100 bg-primary-50/10' : ''}`}
                         >
-                            <div className="flex items-center justify-between gap-1">
-                                <h4 className="text-[11px] font-semibold text-neutral-700 leading-tight truncate" title={label}>{label}</h4>
+                            <div className="flex items-center justify-between gap-1 group/title">
+                                {isEditingLabel ? (
+                                    <div className="flex-1 flex gap-1 items-center">
+                                        <input
+                                            type="text"
+                                            value={editLabelValue}
+                                            onChange={(e) => setEditLabelValue(e.target.value)}
+                                            className="text-[10px] py-0.5 px-1 border border-primary-300 rounded outline-none w-full"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleUpdateCustomLabel(key);
+                                                if (e.key === 'Escape') setEditingSlot(null);
+                                            }}
+                                        />
+                                        <button onClick={() => handleUpdateCustomLabel(key)} className="text-primary-600">
+                                            <Check size={10} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 flex items-center gap-1 min-w-0">
+                                        <h4 className="text-[11px] font-semibold text-neutral-700 leading-tight truncate" title={label}>{label}</h4>
+                                        {isCustom && (
+                                            <button
+                                                onClick={() => {
+                                                    setEditingSlot(key);
+                                                    setEditLabelValue(label);
+                                                }}
+                                                className="opacity-0 group-hover/title:opacity-100 transition-opacity text-neutral-300 hover:text-primary-600"
+                                            >
+                                                <Pencil size={10} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                                 <FileText size={14} className={`shrink-0 ${doc ? "text-primary-600" : "text-neutral-300"}`} />
                             </div>
 
