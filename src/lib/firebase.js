@@ -35,10 +35,16 @@ let auth;
 let firebaseInitialized = false;
 
 try {
+    console.log('Firebase Config loaded:', {
+        projectId: firebaseConfig.projectId,
+        apiKeyPresent: !!firebaseConfig.apiKey,
+        authDomain: firebaseConfig.authDomain
+    });
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
-    firebaseInitialized = !firebaseConfig.apiKey.startsWith('YOUR_');
+    firebaseInitialized = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_');
+    console.log('Firebase Initialized:', firebaseInitialized);
 } catch (error) {
     console.warn('Firebase initialization failed:', error.message);
 }
